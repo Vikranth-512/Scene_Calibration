@@ -1,4 +1,4 @@
-# Blender Render Performance Analyzer
+# Blender Scene Calibration
 
 A production-quality Blender add-on designed to perform comprehensive render performance analysis for both static scenes and animations. The tool provides deep insights into scene complexity, identifies rendering bottlenecks, estimates VRAM usage, and predicts actual render times using a hardware-calibrated benchmark engine.
 
