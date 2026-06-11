@@ -2,6 +2,8 @@
 
 A production-quality Blender add-on designed to perform comprehensive render performance analysis for both static scenes and animations. The tool provides deep insights into scene complexity, identifies rendering bottlenecks, estimates VRAM usage, and predicts actual render times using a hardware-calibrated benchmark engine.
 
+<img width="1236" height="897" alt="Screenshot 2026-06-11 114300" src="https://github.com/user-attachments/assets/4f8151ca-c734-4a8d-aaba-840c1d27522a" />
+
 ## Project Structure
 
 ```text
