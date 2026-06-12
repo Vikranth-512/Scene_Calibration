@@ -80,3 +80,111 @@ Once installed, open the 3D Viewport and press `N` to open the sidebar. Navigate
 - Tested heavily against the new Blender 4.2 LTS API standards.
 - Fully compatible with both Cycles and Eevee render pipelines.
 - Safely handles complex setups including heavy Modifiers and Geometry Nodes by reading the evaluated dependency graph (`evaluated_depsgraph_get`).
+
+## Example Output Json
+
+{
+    "fingerprint": "492d639f54610a461987181e9d28f5fbd686cba75130ad16de59d62e8fbdd43d",
+    "snapshot": {
+        "hardware": {
+            "cpu_name": "Intel64 Family 6 Model 141 Stepping 1, GenuineIntel",
+            "ram_gb": 7.7,
+            "gpu_names": [
+                "NVIDIA GeForce GTX 1650 with Max-Q Design",
+                "NVIDIA GeForce GTX 1650 with Max-Q Design"
+            ],
+            "gpu_vendor": "NVIDIA",
+            "cuda_enabled": false,
+            "optix_enabled": false,
+            "hip_enabled": false,
+            "metal_enabled": false,
+            "performance_tier": "Entry"
+        },
+        "scene_stats": {
+            "total_objects": 52,
+            "visible_objects": 52,
+            "hidden_objects": 0,
+            "meshes": 42,
+            "lights": 3,
+            "cameras": 4,
+            "curves": 0,
+            "volumes": 0,
+            "materials": 23,
+            "textures": 29,
+            "instances": 0,
+            "collections": 1,
+            "geometry_node_objects": 0,
+            "particle_systems": 0,
+            "hair_systems": 0,
+            "total_vertices": 345980,
+            "total_edges": 809119,
+            "total_faces": 463410,
+            "total_triangles": 0,
+            "bounds_min": [
+                -2.9350996017456055,
+                -5.702177047729492,
+                -0.20000015199184418
+            ],
+            "bounds_max": [
+                6.775911808013916,
+                3.036269187927246,
+                4.694690227508545
+            ]
+        },
+        "cycles_score": {
+            "mesh_score": 9.2682,
+            "modifier_score": 0.0,
+            "shader_score": 1.02,
+            "lighting_score": 0.8999999999999999,
+            "volume_score": 0.0,
+            "render_settings_score": 16.3,
+            "total_score": 27.4882,
+            "category": "Light"
+        },
+        "eevee_score": {
+            "mesh_score": 13.9023,
+            "modifier_score": 0.0,
+            "shader_score": 1.275,
+            "lighting_score": 3.5999999999999996,
+            "volume_score": 0.0,
+            "render_settings_score": 16.299999999999997,
+            "total_score": 35.077299999999994,
+            "category": "Light"
+        },
+        "memory_estimate": {
+            "geometry_vram_mb": 66.29133224487305,
+            "texture_vram_mb": 0,
+            "volume_vram_mb": 0.0,
+            "total_vram_mb": 366.29133224487305,
+            "total_system_ram_mb": 1463.5495986938477
+        },
+        "top_bottlenecks": [
+            {
+                "object_name": "i2stay0053",
+                "impact_score": 20.0,
+                "contribution_percent": 100.0,
+                "primary_cause": "Moderate Poly Count (1.0x Amplification)"
+            }
+        ],
+        "top_textures": [],
+        "render_settings": {
+            "engine": "CYCLES",
+            "resolution_x": 3000,
+            "resolution_y": 2257,
+            "resolution_percentage": 100,
+            "samples": 1096,
+            "adaptive_sampling": true,
+            "max_bounces": 12,
+            "diffuse_bounces": 4,
+            "glossy_bounces": 4,
+            "transmission_bounces": 12,
+            "caustics_reflective": true,
+            "caustics_refractive": true,
+            "denoising": true,
+            "motion_blur": false,
+            "depth_of_field": false,
+            "render_settings_cost_score": 163
+        },
+        "instances": []
+    }
+}
