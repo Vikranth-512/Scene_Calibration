@@ -26,13 +26,22 @@ class RENDERANALYZER_OT_export_report(bpy.types.Operator, ExportHelper):
         data_str = scene["render_analyzer_cache"]
         
         ext = os.path.splitext(self.filepath)[1].lower()
+        
+        try:
+            # Parse the cached string and format it nicely
+            parsed_data = json.loads(data_str)
+            formatted_json = json.dumps(parsed_data, indent=4, sort_keys=False)
+        except json.JSONDecodeError:
+            # Fallback if somehow invalid
+            formatted_json = data_str
+            
         if ext == '.json':
             with open(self.filepath, 'w') as f:
-                f.write(data_str)
+                f.write(formatted_json)
         elif ext == '.csv':
             self.report({'WARNING'}, "CSV export not fully implemented, saving as JSON")
             with open(self.filepath, 'w') as f:
-                f.write(data_str)
+                f.write(formatted_json)
                 
         self.report({'INFO'}, f"Exported to {self.filepath}")
         return {'FINISHED'}

@@ -9,11 +9,11 @@ class EstimationResult:
     confidence_score: float = 0.0
 
 class BaseEstimator(Protocol):
-    def estimate(self, scene_metrics: SceneAnalysisSnapshot, average_benchmark_time: float = None) -> EstimationResult:
+    def estimate(self, scene_metrics: SceneAnalysisSnapshot, benchmark_data_json: str = None) -> EstimationResult:
         ...
 
 class RuleBasedEstimator:
-    def estimate(self, scene_metrics: SceneAnalysisSnapshot, average_benchmark_time: float = None) -> EstimationResult:
+    def estimate(self, scene_metrics: SceneAnalysisSnapshot, benchmark_data_json: str = None) -> EstimationResult:
         result = EstimationResult()
         
         # Calculate static rule-based estimate first
@@ -29,64 +29,89 @@ class RuleBasedEstimator:
         else:
             static_estimate = static_base_time * 0.1 # Eevee is much faster
             
-        # If we have benchmark data, use it as the base
-        if average_benchmark_time and average_benchmark_time > 0:
-            res_x = scene_metrics.render_settings.resolution_x
-            res_y = scene_metrics.render_settings.resolution_y
-            res_pct = scene_metrics.render_settings.resolution_percentage / 100.0
+        # M-01: Apply Hardware Performance Factor
+        tier = scene_metrics.hardware.performance_tier
+        hardware_factor = 1.8 # Default / Entry
+        if tier == "Extreme": hardware_factor = 0.4
+        elif tier == "High": hardware_factor = 0.7
+        elif tier == "Moderate": hardware_factor = 1.0
+        elif tier == "Low": hardware_factor = 1.4
+        elif tier == "Entry": hardware_factor = 1.8
+        
+        static_estimate *= hardware_factor
             
-            full_width = int(res_x * res_pct)
-            full_height = int(res_y * res_pct)
-            full_pixels = full_width * full_height
-            
-            # The benchmark is hardcoded to 10% x 10% border regions
-            border_width_pct = 0.1
-            border_height_pct = 0.1
-            border_area_pct = border_width_pct * border_height_pct # 0.01 (1%)
-            
-            sample_width = int(full_width * border_width_pct)
-            sample_height = int(full_height * border_height_pct)
-            sample_pixels = sample_width * sample_height
-            
-            time_per_pixel = average_benchmark_time / sample_pixels if sample_pixels > 0 else 0
-            
-            # Corrected Extrapolation logic: No extra multipliers!
-            # time_per_pixel * full_pixels properly scales the area.
-            benchmark_estimate = time_per_pixel * full_pixels
-            
-            # Logging the exact pipeline variables requested for debugging
-            print("\n--- BENCHMARK ESTIMATION LOG ---")
-            print(f"Sample Width: {sample_width}")
-            print(f"Sample Height: {sample_height}")
-            print(f"Sample Pixels: {sample_pixels}")
-            print(f"Full Width: {full_width}")
-            print(f"Full Height: {full_height}")
-            print(f"Full Pixels: {full_pixels}")
-            print(f"Sample Time: {average_benchmark_time:.4f} sec")
-            print(f"Time Per Pixel: {time_per_pixel:.8f} sec")
-            print(f"Area Ratio: {full_pixels / sample_pixels if sample_pixels > 0 else 0:.2f}")
-            print(f"Estimated Full Frame: {benchmark_estimate:.2f} sec")
-            print(f"Static Estimate Reference: {static_estimate:.2f} sec")
-            print("--------------------------------\n")
-            
-            # Sanity Validation Layer
-            # We add a 60-second fixed overhead buffer to the upper bound to prevent 
-            # false positives on very lightweight scenes (like the default cube) where 
-            # static_estimate is nearly zero but engine init overhead is non-zero.
-            upper_bound = (static_estimate * 100) + 60.0
-            lower_bound = (static_estimate / 100)
-            
-            if benchmark_estimate > upper_bound or benchmark_estimate < lower_bound:
-                print("WARNING: Benchmark estimate appears invalid. Possible scaling/extrapolation error detected.")
-                print("Falling back to static estimate.")
-                result.estimated_frame_time_seconds = static_estimate
-                result.confidence_score = 0.4
-            else:
+        # If we have benchmark data, use it
+        if benchmark_data_json:
+            import json
+            try:
+                import numpy as np
+                results = json.loads(benchmark_data_json)
+                
+                if not results or sum(r["time"] for r in results) <= 0:
+                    raise ValueError("No valid benchmark samples.")
+                
+                res_x = scene_metrics.render_settings.resolution_x
+                res_y = scene_metrics.render_settings.resolution_y
+                res_pct = scene_metrics.render_settings.resolution_percentage / 100.0
+                
+                full_width = int(res_x * res_pct)
+                full_height = int(res_y * res_pct)
+                full_pixels = full_width * full_height
+                
+                pixels_arr = []
+                times_arr = []
+                
+                for r in results:
+                    sample_pixels = full_pixels * r["area"]
+                    pixels_arr.append(sample_pixels)
+                    times_arr.append(r["time"])
+                
+                # --- Tier 1: Linear regression (best case) ---
+                m, c = np.polyfit(pixels_arr, times_arr, 1)
+                pixel_cost = float(m)
+                fixed_overhead = max(0.0, float(c))  # Clamp negative overhead to 0
+                
+                print("\n--- BENCHMARK ESTIMATION LOG ---")
+                print(f"Sample Areas: {[r['area'] for r in results]}")
+                print(f"Sample Times: {times_arr}")
+                print(f"Regression slope (pixel_cost): {pixel_cost:.10f}")
+                print(f"Regression intercept (overhead): {float(c):.4f} -> clamped: {fixed_overhead:.4f}")
+                
+                if pixel_cost > 0:
+                    benchmark_estimate = fixed_overhead + (pixel_cost * full_pixels)
+                    confidence = 0.90
+                    print(f"Tier 1 (Regression): {benchmark_estimate:.2f} sec")
+                else:
+                    # --- Tier 2: Extrapolate from largest sample ---
+                    # Regression slope is bad (noise), but the raw timings are real.
+                    # Use the largest-area sample to scale linearly.
+                    largest = max(results, key=lambda r: r["area"])
+                    benchmark_estimate = largest["time"] / largest["area"]
+                    confidence = 0.75
+                    print(f"Tier 2 (Largest-sample extrapolation): {benchmark_estimate:.2f} sec")
+                
+                print(f"Static Estimate Reference: {static_estimate:.2f} sec")
+                print(f"Confidence: {confidence}")
+                print("--------------------------------\n")
+                    
+                # Sanity bounds — warn but don't reject
+                if benchmark_estimate > static_estimate * 100:
+                    print("WARNING: Benchmark estimate exceeds 100x static score.")
+                if benchmark_estimate < static_estimate / 100:
+                    print("WARNING: Benchmark estimate is less than 1/100x static score.")
+                    
                 result.estimated_frame_time_seconds = benchmark_estimate
-                result.confidence_score = 0.85
+                result.confidence_score = confidence
+                
+            except Exception as e:
+                print(f"Benchmark estimation failed: {e}")
+                print("Falling back to static hardware-calibrated estimate.")
+                result.estimated_frame_time_seconds = static_estimate
+                result.confidence_score = 0.40
         else:
             # Fallback to pure rule-based estimation
             result.estimated_frame_time_seconds = static_estimate
-            result.confidence_score = 0.4
+            result.confidence_score = 0.40
             
         return result
+

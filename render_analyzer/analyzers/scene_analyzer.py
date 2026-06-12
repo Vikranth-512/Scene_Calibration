@@ -2,7 +2,7 @@ import bpy
 from mathutils import Vector
 from ..utils.statistics import SceneStats
 
-def analyze_scene() -> SceneStats:
+def analyze_scene(depsgraph=None) -> SceneStats:
     stats = SceneStats()
     scene = bpy.context.scene
     

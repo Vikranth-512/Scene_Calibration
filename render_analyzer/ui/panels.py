@@ -12,6 +12,8 @@ class RENDERANALYZER_PT_dashboard(bpy.types.Panel):
         scene = context.scene
         props = scene.render_analyzer_props
         
+        layout.prop(props, "analysis_mode", expand=True)
+        
         row = layout.row()
         row.scale_y = 1.5
         row.operator("renderanalyzer.analyze_scene", text="Analyze Scene", icon='VIEWZOOM')
@@ -30,12 +32,15 @@ class RENDERANALYZER_PT_dashboard(bpy.types.Panel):
         box.label(text="Estimations", icon='TIME')
         col = box.column(align=True)
         if props.estimated_frame_time_s > 0:
-            if props.confidence_score >= 0.8:
+            if props.confidence_score >= 0.7:
                 col.label(text=f"Est. Frame Time (Benchmark): {props.estimated_frame_time_s:.1f} sec", icon='FUND')
             else:
                 col.label(text=f"Est. Frame Time (Static): {props.estimated_frame_time_s:.1f} sec", icon='FILE_TEXT')
         else:
             col.label(text="Est. Frame Time: Unknown", icon='QUESTION')
+            
+        if props.estimated_animation_time_s > 0:
+            col.label(text=f"Est. Animation Time: {props.estimated_animation_time_s / 60.0:.1f} min", icon='RENDER_ANIMATION')
             
         col.label(text=f"Est. VRAM Usage: {props.total_vram_mb:.1f} MB")
         

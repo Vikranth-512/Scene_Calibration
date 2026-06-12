@@ -13,6 +13,17 @@ class TextureItem(bpy.types.PropertyGroup):
     estimated_vram_mb: FloatProperty(name="VRAM (MB)")
 
 class RenderAnalyzerProperties(bpy.types.PropertyGroup):
+    analysis_mode: bpy.props.EnumProperty(
+        name="Analysis Mode",
+        description="Select the depth of scene evaluation",
+        items=[
+            ('FAST', "Fast", "Skip heavy geometry node evaluations for quick estimation"),
+            ('BALANCED', "Balanced", "Standard evaluation of scene geometry"),
+            ('DEEP', "Deep", "Full evaluation including heavy physics and bottlenecks")
+        ],
+        default='BALANCED'
+    )
+    
     # Performance Dashboard / Complexity
     cycles_score: FloatProperty(name="Cycles Score")
     eevee_score: FloatProperty(name="Eevee Score")
@@ -27,7 +38,9 @@ class RenderAnalyzerProperties(bpy.types.PropertyGroup):
     
     # Benchmarking
     last_benchmark_time: FloatProperty(name="Benchmark Avg", default=0.0)
+    benchmark_data: StringProperty(name="Benchmark Data", default="")
     estimated_frame_time_s: FloatProperty(name="Est. Frame Time (s)", default=0.0)
+    estimated_animation_time_s: FloatProperty(name="Est. Animation Time (s)", default=0.0)
     confidence_score: FloatProperty(name="Confidence Score", default=0.0)
     
     # Collections for UILists

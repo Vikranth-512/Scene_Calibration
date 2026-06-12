@@ -84,15 +84,51 @@ classes = (
     RENDERANALYZER_OT_export_report,
 )
 
+from .reporting.telemetry_handler import register_telemetry, unregister_telemetry
+from .utils.helpers import generate_scene_fingerprint
+
+@bpy.app.handlers.persistent
+def depsgraph_update_cache_invalidator(scene, depsgraph):
+    # Skip invalidation entirely while a benchmark is running — the benchmark
+    # itself modifies render borders/samples which would trigger this handler
+    # and wipe benchmark_data before the estimator can consume it.
+    from .estimation.benchmark_engine import BenchmarkEngine as _BE
+    if _BE.is_benchmarking:
+        return
+        
+    # Only invalidate if we currently have valid data
+    if not getattr(scene, 'render_analyzer_props', None) or not scene.render_analyzer_props.has_valid_data:
+        return
+        
+    # Check strict SHA256 fingerprint
+    current_hash = generate_scene_fingerprint(scene)
+    if "render_analyzer_cache" in scene:
+        import json
+        try:
+            data = json.loads(scene["render_analyzer_cache"])
+            if data.get("fingerprint") != current_hash:
+                # Content changed! Invalidate UI and clear old benchmark.
+                scene.render_analyzer_props.has_valid_data = False
+                scene.render_analyzer_props.benchmark_data = ""
+        except:
+            pass
+
 def register():
     for cls in classes:
         bpy.utils.register_class(cls)
     bpy.types.Scene.render_analyzer_props = bpy.props.PointerProperty(type=RenderAnalyzerProperties)
+    register_telemetry()
+    if depsgraph_update_cache_invalidator not in bpy.app.handlers.depsgraph_update_post:
+        bpy.app.handlers.depsgraph_update_post.append(depsgraph_update_cache_invalidator)
 
 def unregister():
+    if depsgraph_update_cache_invalidator in bpy.app.handlers.depsgraph_update_post:
+        bpy.app.handlers.depsgraph_update_post.remove(depsgraph_update_cache_invalidator)
+    unregister_telemetry()
     for cls in reversed(classes):
         bpy.utils.unregister_class(cls)
     del bpy.types.Scene.render_analyzer_props
 
 if __name__ == "__main__":
     register()
+

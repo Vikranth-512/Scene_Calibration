@@ -28,11 +28,14 @@ class RENDERANALYZER_OT_analyze_scene(bpy.types.Operator):
             self.report({'INFO'}, "Render Analyzer: Loaded from cache.")
             scene.render_analyzer_props.update_from_snapshot(cached)
             
-            # Recalculate estimation using current benchmark time!
+            # Estimate Time
+            benchmark_data = context.scene.render_analyzer_props.benchmark_data
+            
             estimator = RuleBasedEstimator()
-            estimation = estimator.estimate(cached, average_benchmark_time=scene.render_analyzer_props.last_benchmark_time)
-            scene.render_analyzer_props.estimated_frame_time_s = estimation.estimated_frame_time_seconds
-            scene.render_analyzer_props.confidence_score = estimation.confidence_score
+            est_result = estimator.estimate(cached, benchmark_data_json=benchmark_data)
+            
+            context.scene.render_analyzer_props.estimated_frame_time_s = est_result.estimated_frame_time_seconds
+            context.scene.render_analyzer_props.confidence_score = est_result.confidence_score
             
             return {'FINISHED'}
             
@@ -46,26 +49,29 @@ class RENDERANALYZER_OT_analyze_scene(bpy.types.Operator):
         # 2. Extract Data
         depsgraph = context.evaluated_depsgraph_get()
         snapshot.scene_stats = analyze_scene()
-        meshes, instances = analyze_meshes(depsgraph)
+        mode = scene.render_analyzer_props.analysis_mode
+        meshes, instances = analyze_meshes(depsgraph, mode=mode)
         snapshot.top_textures = analyze_textures()
-        materials = analyze_materials()
+        materials = analyze_materials(scene)
         lighting = analyze_lighting()
         volumes = analyze_volumes()
         snapshot.render_settings = analyze_render_settings()
         
         # 3. Calculate Scores & Memory
-        cycles, eevee, bottlenecks = calculate_scores(meshes, materials, lighting, volumes, snapshot.render_settings)
-        snapshot.cycles_score = cycles
-        snapshot.eevee_score = eevee
-        snapshot.top_bottlenecks = bottlenecks
+        snapshot.instances = instances
+        snapshot.cycles_score, snapshot.eevee_score, snapshot.top_bottlenecks = calculate_scores(
+            meshes, instances, materials, lighting, volumes, snapshot.render_settings, instance_multiplier=0.15
+        )
         snapshot.memory_estimate = estimate_memory(meshes, snapshot.top_textures, volumes)
         
         # Estimate Time
+        benchmark_data = context.scene.render_analyzer_props.benchmark_data
+        
         estimator = RuleBasedEstimator()
-        # We don't have benchmark time yet, just rule-based
-        estimation = estimator.estimate(snapshot, average_benchmark_time=scene.render_analyzer_props.last_benchmark_time)
-        scene.render_analyzer_props.estimated_frame_time_s = estimation.estimated_frame_time_seconds
-        scene.render_analyzer_props.confidence_score = estimation.confidence_score
+        est_result = estimator.estimate(snapshot, benchmark_data_json=benchmark_data)
+        
+        scene.render_analyzer_props.estimated_frame_time_s = est_result.estimated_frame_time_seconds
+        scene.render_analyzer_props.confidence_score = est_result.confidence_score
         
         # 4. Save Cache
         save_analysis_to_cache(scene, snapshot)

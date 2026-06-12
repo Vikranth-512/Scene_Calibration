@@ -6,7 +6,6 @@ class RENDERANALYZER_UL_bottlenecks(bpy.types.UIList):
             row = layout.row(align=True)
             row.label(text=item.object_name, icon='OBJECT_DATA')
             row.label(text=f"Score: {item.impact_score:.1f}")
-            row.label(text=f"{item.contribution_percent:.1f}%")
             row.label(text=item.primary_cause)
         elif self.layout_type in {'GRID'}:
             layout.alignment = 'CENTER'

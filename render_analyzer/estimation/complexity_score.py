@@ -1,6 +1,6 @@
 from typing import List, Tuple
 from ..utils.statistics import (
-    CyclesComplexityScore, EeveeComplexityScore, MeshStats, 
+    CyclesComplexityScore, EeveeComplexityScore, MeshStats, InstanceStats,
     MaterialStats, LightingStats, VolumeStats, RenderSettingsStats,
     ObjectBottleneck
 )
@@ -14,19 +14,25 @@ def determine_category(score: float) -> str:
 
 def calculate_scores(
     meshes: List[MeshStats],
+    instances: List[InstanceStats],
     materials: List[MaterialStats],
     lighting: LightingStats,
     volumes: VolumeStats,
-    render_settings: RenderSettingsStats
+    render_settings: RenderSettingsStats,
+    instance_multiplier: float = 0.15
 ) -> Tuple[CyclesComplexityScore, EeveeComplexityScore, List[ObjectBottleneck]]:
     
     cycles = CyclesComplexityScore()
     eevee = EeveeComplexityScore()
     
-    # 1. Base Mesh Score
-    total_faces = sum(m.face_count for m in meshes)
+    # 1. Base Mesh Score (Fix H-01 and H-04)
+    total_faces = sum(m.evaluated_face_count for m in meshes)
+    total_instance_faces = sum(i.total_instanced_faces for i in instances)
+    
+    effective_faces = total_faces + (total_instance_faces * instance_multiplier)
+    
     # Simple heuristic: 1 million faces = 20 points
-    base_mesh_points = min((total_faces / 1_000_000.0) * 20, 100)
+    base_mesh_points = min((effective_faces / 1_000_000.0) * 20, 100)
     
     cycles.mesh_score = base_mesh_points
     eevee.mesh_score = base_mesh_points * 1.5 # Eevee struggles more with raw huge poly counts due to VRAM
@@ -58,31 +64,43 @@ def calculate_scores(
     
     # --- Bottleneck Calculation ---
     bottlenecks = []
+    
+    # Base meshes
     for m in meshes:
         impact = 0.0
         cause = []
         
-        if m.face_count > 500_000:
+        # Penalize strictly by evaluated face count, bypassing double-counting
+        if m.evaluated_face_count > 500_000:
             impact += 40
-            cause.append("High Poly Count")
-        elif m.face_count > 100_000:
+            cause.append(f"High Poly Count ({m.amplification_ratio:.1f}x Amplification)")
+        elif m.evaluated_face_count > 100_000:
             impact += 20
-            cause.append("Moderate Poly Count")
+            cause.append(f"Moderate Poly Count ({m.amplification_ratio:.1f}x Amplification)")
             
-        if m.has_geometry_nodes:
-            impact += 30
-            cause.append("Geometry Nodes")
-            
-        if m.has_subdivision:
-            impact += 20
-            cause.append("Subdivision")
-            
-        # Simplified material matching (assume expensive material is attached)
-        # Real implementation would trace exact slots
-        
         if impact > 0:
             bottlenecks.append(ObjectBottleneck(
                 object_name=m.object_name,
+                impact_score=impact,
+                primary_cause=", ".join(cause)
+            ))
+            
+    # Instances
+    for i in instances:
+        impact = 0.0
+        cause = []
+        effective_cost = i.total_instanced_faces * instance_multiplier
+        
+        if effective_cost > 500_000:
+            impact += 30
+            cause.append(f"Massive Instancing ({i.instance_count} instances)")
+        elif effective_cost > 100_000:
+            impact += 15
+            cause.append(f"Heavy Instancing ({i.instance_count} instances)")
+            
+        if impact > 0:
+            bottlenecks.append(ObjectBottleneck(
+                object_name=f"{i.base_object_name} (Instances)",
                 impact_score=impact,
                 primary_cause=", ".join(cause)
             ))

@@ -34,6 +34,9 @@ class MeshStats:
     vertex_count: int = 0
     edge_count: int = 0
     face_count: int = 0
+    base_face_count: int = 0
+    evaluated_face_count: int = 0
+    amplification_ratio: float = 1.0
     triangle_count: int = 0
     ngon_count: int = 0
     is_instanced: bool = False
@@ -168,3 +171,33 @@ class SceneAnalysisSnapshot:
     top_bottlenecks: List[ObjectBottleneck] = dataclasses.field(default_factory=list)
     top_textures: List[TextureStats] = dataclasses.field(default_factory=list)
     render_settings: RenderSettingsStats = dataclasses.field(default_factory=RenderSettingsStats)
+    instances: List[InstanceStats] = dataclasses.field(default_factory=list)
+
+    def to_tensor(self):
+        """
+        ML Readiness: Converts the snapshot into a fixed-size numpy array suitable for model training.
+        """
+        try:
+            import numpy as np
+        except ImportError:
+            return None
+
+        # GPU Tier Mapping
+        tier_map = {"Entry": 0, "Moderate": 1, "High": 2, "Extreme": 3, "Unknown": -1, "CPU Only": -2}
+        tier_val = tier_map.get(self.hardware.performance_tier, -1)
+
+        # Build feature vector
+        vector = [
+            float(self.scene_stats.total_faces),
+            float(sum(m.evaluated_face_count for m in getattr(self, '_cached_meshes', [])) if hasattr(self, '_cached_meshes') else 0),
+            float(sum(i.total_instanced_faces for i in self.instances)),
+            float(self.cycles_score.shader_score),
+            float(self.memory_estimate.texture_vram_mb),
+            float(self.cycles_score.volume_score),
+            float(self.cycles_score.lighting_score),
+            float(self.render_settings.samples),
+            float(self.render_settings.resolution_x * self.render_settings.resolution_y * (self.render_settings.resolution_percentage / 100.0)),
+            float(tier_val),
+            float(self.hardware.ram_gb)
+        ]
+        return np.array(vector, dtype=np.float32)

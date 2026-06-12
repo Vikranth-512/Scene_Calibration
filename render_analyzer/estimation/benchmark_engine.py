@@ -2,6 +2,9 @@ import bpy
 import time
 
 class BenchmarkEngine:
+    # Global flag so depsgraph invalidator can skip during benchmarking
+    is_benchmarking = False
+    
     def __init__(self):
         self.original_settings = {}
 
@@ -34,12 +37,10 @@ class BenchmarkEngine:
                 pass
 
     def render_sample(self):
-        # We invoke the actual render operator without writing to disk
-        # use_viewport=False forces the real engine pipeline
+        """Synchronous render of the current border region. Returns wall-clock seconds."""
         start_time = time.time()
-        bpy.ops.render.render(write_still=False, use_viewport=False)
-        end_time = time.time()
-        return end_time - start_time
+        bpy.ops.render.render(write_still=False)
+        return time.time() - start_time
 
     def restore_settings(self, scene):
         if not self.original_settings:

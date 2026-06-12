@@ -1,7 +1,7 @@
 import bpy
 from ..utils.statistics import LightingStats
 
-def analyze_lighting() -> LightingStats:
+def analyze_lighting(depsgraph=None) -> LightingStats:
     stats = LightingStats()
     scene = bpy.context.scene
     

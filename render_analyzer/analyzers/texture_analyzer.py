@@ -16,13 +16,21 @@ def analyze_textures() -> List[TextureStats]:
         stats.bit_depth = img.depth
         stats.file_format = img.file_format
         
-        # Calculate VRAM: Width * Height * Channels * (BitDepth / 8)
+        # Calculate VRAM: GPUs pack textures differently than disk
         channels = img.channels
         width, height = stats.resolution
-        bytes_per_pixel = channels * (stats.bit_depth / 8.0)
-        vram_bytes = width * height * bytes_per_pixel
         
-        stats.estimated_vram_mb = vram_bytes / (1024 * 1024)
+        if stats.file_format in {'OPEN_EXR', 'OPEN_EXR_MULTILAYER', 'HDR'}:
+            bytes_per_pixel = channels * 4.0 # 32-bit floats
+        else:
+            bytes_per_pixel = 4.0 # Often unpacked to RGBA32 (8-bit per channel)
+            
+        raw_vram_bytes = width * height * bytes_per_pixel
+        
+        # Add 33% overhead for Mipmaps
+        effective_vram_bytes = raw_vram_bytes * 1.33
+        
+        stats.estimated_vram_mb = effective_vram_bytes / (1024 * 1024)
         
         # Attempt to get file size
         if img.filepath:

@@ -2,10 +2,20 @@ import bpy
 from typing import List
 from ..utils.statistics import MaterialStats
 
-def analyze_materials() -> List[MaterialStats]:
+def analyze_materials(scene=None) -> List[MaterialStats]:
     results = []
     
-    for mat in bpy.data.materials:
+    if scene is None:
+        scene = bpy.context.scene
+        
+    scene_materials = set()
+    for obj in scene.objects:
+        if hasattr(obj, 'material_slots'):
+            for slot in obj.material_slots:
+                if slot.material:
+                    scene_materials.add(slot.material)
+    
+    for mat in scene_materials:
         stats = MaterialStats(name=mat.name)
         
         if not mat.use_nodes or not mat.node_tree:
