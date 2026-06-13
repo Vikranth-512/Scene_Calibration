@@ -17,6 +17,7 @@ class RENDERANALYZER_PT_dashboard(bpy.types.Panel):
         row = layout.row()
         row.scale_y = 1.5
         row.operator("renderanalyzer.analyze_scene", text="Analyze Scene", icon='VIEWZOOM')
+        row.operator("renderanalyzer.clear_cache", text="", icon='TRASH')
         
         if not props.has_valid_data:
             layout.label(text="Click Analyze Scene to begin.")
@@ -99,3 +100,21 @@ class RENDERANALYZER_PT_reports(bpy.types.Panel):
     def draw(self, context):
         layout = self.layout
         layout.operator("renderanalyzer.export_report", text="Export JSON Report", icon='EXPORT')
+
+class RENDERANALYZER_PT_ml_tools(bpy.types.Panel):
+    bl_label = "ML Tools"
+    bl_idname = "RENDERANALYZER_PT_ml_tools"
+    bl_space_type = 'VIEW_3D'
+    bl_region_type = 'UI'
+    bl_category = "Render Analyzer"
+    bl_options = {'DEFAULT_CLOSED'}
+
+    def draw(self, context):
+        layout = self.layout
+        props = context.scene.render_analyzer_props
+        
+        layout.prop(props, "enable_ml_telemetry")
+        
+        layout.separator()
+        layout.operator("renderanalyzer.export_ml_features", text="Export ML Features", icon='SPREADSHEET')
+

@@ -2,7 +2,7 @@ import bpy
 import json
 import dataclasses
 from .helpers import generate_scene_fingerprint
-from .statistics import SceneAnalysisSnapshot, HardwareProfile, SceneStats, CyclesComplexityScore, EeveeComplexityScore, MemoryEstimate, ObjectBottleneck, TextureStats, RenderSettingsStats
+from .statistics import SceneAnalysisSnapshot, HardwareProfile, SceneStats, CyclesComplexityScore, EeveeComplexityScore, MemoryEstimate, ObjectBottleneck, TextureStats, RenderSettingsStats, MeshStats, MaterialStats, LightingStats, VolumeStats
 
 class EnhancedJSONEncoder(json.JSONEncoder):
     def default(self, o):
@@ -47,7 +47,11 @@ def load_analysis_from_cache(scene) -> SceneAnalysisSnapshot:
             memory_estimate=MemoryEstimate(**snapshot_dict.get("memory_estimate", {})),
             top_bottlenecks=[ObjectBottleneck(**b) for b in snapshot_dict.get("top_bottlenecks", [])],
             top_textures=[TextureStats(**t) for t in snapshot_dict.get("top_textures", [])],
-            render_settings=RenderSettingsStats(**snapshot_dict.get("render_settings", {}))
+            render_settings=RenderSettingsStats(**snapshot_dict.get("render_settings", {})),
+            meshes=[MeshStats(**m) for m in snapshot_dict.get("meshes", [])],
+            materials=[MaterialStats(**m) for m in snapshot_dict.get("materials", [])],
+            lighting=LightingStats(**snapshot_dict.get("lighting", {})),
+            volumes=VolumeStats(**snapshot_dict.get("volumes", {}))
         )
         return snapshot
         

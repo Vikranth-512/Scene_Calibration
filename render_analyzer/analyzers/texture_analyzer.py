@@ -7,7 +7,10 @@ def analyze_textures() -> List[TextureStats]:
     textures = []
     for img in bpy.data.images:
         # Ignore Render Results and Viewers
-        if img.source in {'VIEWER', 'GENERATED'} or not img.has_data:
+        if img.source in {'VIEWER', 'GENERATED'}:
+            continue
+            
+        if img.size[0] == 0 or img.size[1] == 0:
             continue
             
         stats = TextureStats()

@@ -50,6 +50,12 @@ class RenderAnalyzerProperties(bpy.types.PropertyGroup):
     textures: CollectionProperty(type=TextureItem)
     active_texture_index: IntProperty()
     
+    enable_ml_telemetry: bpy.props.BoolProperty(
+        name="Enable ML Telemetry",
+        description="Automatically record rendering times and scene features for ML training data.",
+        default=False
+    )
+    
     has_valid_data: bpy.props.BoolProperty(default=False)
 
     def update_from_snapshot(self, snapshot: SceneAnalysisSnapshot):

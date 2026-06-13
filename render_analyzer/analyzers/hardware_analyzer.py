@@ -1,6 +1,7 @@
 import platform
 import ctypes
 import bpy
+import subprocess
 from ..utils.statistics import HardwareProfile
 
 def get_total_ram_gb() -> float:
@@ -34,7 +35,6 @@ def get_total_ram_gb() -> float:
         except Exception:
             return 0.0
     elif platform.system() == "Darwin":
-        import subprocess
         try:
             out = subprocess.check_output(['sysctl', '-n', 'hw.memsize'])
             return round(int(out.strip()) / (1024 ** 3), 1)
@@ -42,29 +42,87 @@ def get_total_ram_gb() -> float:
             return 0.0
     return 0.0
 
-def analyze_hardware() -> HardwareProfile:
+def get_gpu_vram_gb() -> float:
+    vram_mb = -1.0
+    
+    # 1. nvidia-smi
+    try:
+        out = subprocess.check_output(['nvidia-smi', '--query-gpu=memory.total', '--format=csv,noheader,nounits'], text=True, stderr=subprocess.DEVNULL)
+        vram = sum(int(x.strip()) for x in out.strip().split('\n') if x.strip().isdigit())
+        if vram > 0:
+            return round(vram / 1024.0, 2)
+    except Exception:
+        pass
+        
+    # 2. PowerShell / CIM
+    if platform.system() == "Windows":
+        try:
+            out = subprocess.check_output(['powershell', '-Command', 'Get-CimInstance Win32_VideoController | Select-Object -ExpandProperty AdapterRAM'], text=True, stderr=subprocess.DEVNULL)
+            rams = [int(line.strip()) for line in out.splitlines() if line.strip().isdigit()]
+            if rams:
+                return round(max(rams) / (1024**3), 2)
+        except Exception:
+            pass
+            
+    # 3. macOS fallback
+    if platform.system() == "Darwin":
+        try:
+            out = subprocess.check_output(['system_profiler', 'SPDisplaysDataType'], text=True, stderr=subprocess.DEVNULL)
+            for line in out.splitlines():
+                if 'VRAM' in line or 'Memory' in line:
+                    parts = line.strip().split()
+                    for i, p in enumerate(parts):
+                        if p in {'MB', 'GB'} and i > 0:
+                            val = float(parts[i-1])
+                            if p == 'MB': val /= 1024.0
+                            return round(val, 2)
+        except Exception:
+            pass
+            
+    return -1.0
+
+def analyze_hardware(scene=None) -> HardwareProfile:
+    if scene is None:
+        scene = bpy.context.scene
+        
     profile = HardwareProfile()
     profile.cpu_name = platform.processor() or "Unknown CPU"
     profile.ram_gb = get_total_ram_gb()
+    profile.gpu_vram_gb = get_gpu_vram_gb()
     
     # Try to get Cycles devices
     try:
         cycles_prefs = bpy.context.preferences.addons.get('cycles')
         if cycles_prefs:
             cprefs = cycles_prefs.preferences
-            # Initialize devices if not done
-            cprefs.get_devices()
             
-            # Active API
-            device_type = cprefs.compute_device_type
-            if device_type == 'CUDA':
-                profile.cuda_enabled = True
-            elif device_type == 'OPTIX':
-                profile.optix_enabled = True
-            elif device_type == 'HIP':
-                profile.hip_enabled = True
-            elif device_type == 'METAL':
-                profile.metal_enabled = True
+            # Initialize/Refresh devices
+            if hasattr(cprefs, 'refresh_devices'):
+                cprefs.refresh_devices()
+            elif hasattr(cprefs, 'get_devices'):
+                cprefs.get_devices()
+                
+            # Hardware Availability
+            for device in cprefs.devices:
+                if device.type == 'CUDA':
+                    profile.cuda_enabled = True
+                elif device.type == 'OPTIX':
+                    profile.optix_enabled = True
+                elif device.type == 'HIP':
+                    profile.hip_enabled = True
+                elif device.type == 'METAL':
+                    profile.metal_enabled = True
+                    
+            # Active Compute Backend
+            if getattr(scene.cycles, 'device', 'CPU') == 'CPU':
+                profile.active_compute_backend = "CPU"
+            else:
+                dt = str(getattr(cprefs, 'compute_device_type', 'NONE')).upper()
+                if 'CUDA' in dt or dt == '1': profile.active_compute_backend = "CUDA"
+                elif 'OPTIX' in dt or dt == '2': profile.active_compute_backend = "OPTIX"
+                elif 'HIP' in dt or dt == '4': profile.active_compute_backend = "HIP"
+                elif 'METAL' in dt or dt == '5': profile.active_compute_backend = "METAL"
+                else: profile.active_compute_backend = "NONE"
                 
             # Collect GPU names
             gpus = []
@@ -73,7 +131,7 @@ def analyze_hardware() -> HardwareProfile:
                     gpus.append(device.name)
             
             if not gpus:
-                # If no active GPUs, just list all available
+                # If no active GPUs, list available ones
                 for device in cprefs.devices:
                     if device.type != 'CPU':
                         gpus.append(device.name)

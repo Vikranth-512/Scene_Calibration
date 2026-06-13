@@ -12,6 +12,8 @@ class HardwareProfile:
     hip_enabled: bool = False
     metal_enabled: bool = False
     performance_tier: str = "Unknown"
+    gpu_vram_gb: float = -1.0
+    active_compute_backend: str = "CPU"
 
 @dataclasses.dataclass
 class TextureStats:
@@ -172,6 +174,10 @@ class SceneAnalysisSnapshot:
     top_textures: List[TextureStats] = dataclasses.field(default_factory=list)
     render_settings: RenderSettingsStats = dataclasses.field(default_factory=RenderSettingsStats)
     instances: List[InstanceStats] = dataclasses.field(default_factory=list)
+    meshes: List[MeshStats] = dataclasses.field(default_factory=list)
+    materials: List[MaterialStats] = dataclasses.field(default_factory=list)
+    lighting: LightingStats = dataclasses.field(default_factory=LightingStats)
+    volumes: VolumeStats = dataclasses.field(default_factory=VolumeStats)
 
     def to_tensor(self):
         """
@@ -189,7 +195,7 @@ class SceneAnalysisSnapshot:
         # Build feature vector
         vector = [
             float(self.scene_stats.total_faces),
-            float(sum(m.evaluated_face_count for m in getattr(self, '_cached_meshes', [])) if hasattr(self, '_cached_meshes') else 0),
+            float(sum(m.evaluated_face_count for m in self.meshes)),
             float(sum(i.total_instanced_faces for i in self.instances)),
             float(self.cycles_score.shader_score),
             float(self.memory_estimate.texture_vram_mb),

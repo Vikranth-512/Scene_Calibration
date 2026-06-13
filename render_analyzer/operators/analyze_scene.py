@@ -12,6 +12,7 @@ from ..analyzers.render_settings_analyzer import analyze_render_settings
 from ..estimation.complexity_score import calculate_scores
 from ..estimation.memory_estimator import estimate_memory
 from ..estimation.render_time_estimator import RuleBasedEstimator
+from ..core.session_manager import AnalysisSession
 
 class RENDERANALYZER_OT_analyze_scene(bpy.types.Operator):
     """Analyze the current scene for performance bottlenecks"""
@@ -27,6 +28,7 @@ class RENDERANALYZER_OT_analyze_scene(bpy.types.Operator):
         if cached:
             self.report({'INFO'}, "Render Analyzer: Loaded from cache.")
             scene.render_analyzer_props.update_from_snapshot(cached)
+            AnalysisSession.set_snapshot(cached)
             
             # Estimate Time
             benchmark_data = context.scene.render_analyzer_props.benchmark_data
@@ -44,7 +46,7 @@ class RENDERANALYZER_OT_analyze_scene(bpy.types.Operator):
         snapshot = SceneAnalysisSnapshot()
         
         # 1. Hardware
-        snapshot.hardware = analyze_hardware()
+        snapshot.hardware = analyze_hardware(scene)
         
         # 2. Extract Data
         depsgraph = context.evaluated_depsgraph_get()
@@ -59,6 +61,10 @@ class RENDERANALYZER_OT_analyze_scene(bpy.types.Operator):
         
         # 3. Calculate Scores & Memory
         snapshot.instances = instances
+        snapshot.meshes = meshes
+        snapshot.materials = materials
+        snapshot.lighting = lighting
+        snapshot.volumes = volumes
         snapshot.cycles_score, snapshot.eevee_score, snapshot.top_bottlenecks = calculate_scores(
             meshes, instances, materials, lighting, volumes, snapshot.render_settings, instance_multiplier=0.15
         )
@@ -73,8 +79,9 @@ class RENDERANALYZER_OT_analyze_scene(bpy.types.Operator):
         scene.render_analyzer_props.estimated_frame_time_s = est_result.estimated_frame_time_seconds
         scene.render_analyzer_props.confidence_score = est_result.confidence_score
         
-        # 4. Save Cache
+        # 4. Save Cache & Session
         save_analysis_to_cache(scene, snapshot)
+        AnalysisSession.set_snapshot(snapshot)
         
         # 5. Update UI Props
         scene.render_analyzer_props.update_from_snapshot(snapshot)

@@ -8,7 +8,7 @@ def analyze_scene(depsgraph=None) -> SceneStats:
     
     stats.total_objects = len(bpy.data.objects)
     stats.materials = len(bpy.data.materials)
-    stats.textures = len(bpy.data.images)
+    stats.textures = sum(1 for img in bpy.data.images if img.source not in {'VIEWER', 'GENERATED'} and img.size[0] > 0 and img.size[1] > 0)
     stats.collections = len(bpy.data.collections)
     
     min_b = Vector((float('inf'), float('inf'), float('inf')))
