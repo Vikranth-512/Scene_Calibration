@@ -5,6 +5,8 @@ def analyze_lighting(depsgraph=None) -> LightingStats:
     stats = LightingStats()
     scene = bpy.context.scene
     
+    energies = []
+
     # 1. Analyze lamps
     for obj in bpy.data.objects:
         if obj.type == 'LIGHT':
@@ -18,6 +20,9 @@ def analyze_lighting(depsgraph=None) -> LightingStats:
             elif light.type == 'SPOT':
                 stats.spot_lights += 1
                 
+            if hasattr(light, "energy"):
+                energies.append(light.energy)
+
             # Check shadow casting
             if getattr(light, "use_shadow", True):
                 stats.shadow_casting_lights += 1
@@ -44,6 +49,16 @@ def analyze_lighting(depsgraph=None) -> LightingStats:
                 stats.hdri_environment = True
                 break
                 
+    # Energy aggregations
+    if energies:
+        stats.total_energy = sum(energies)
+        stats.max_energy = max(energies)
+        stats.mean_energy = stats.total_energy / len(energies)
+    else:
+        stats.total_energy = 0.0
+        stats.max_energy = 0.0
+        stats.mean_energy = 0.0
+
     # Lighting Cost calculation
     stats.lighting_cost_score = (stats.area_lights * 5 + 
                                  stats.spot_lights * 4 + 

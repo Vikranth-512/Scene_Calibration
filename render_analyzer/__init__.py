@@ -40,6 +40,18 @@ modulesNames = [
     "estimation.benchmark_engine",
     "estimation.render_time_estimator",
     
+    # Core
+    "core.session_manager",
+
+    # ML
+    "ml.feature_schema",
+    "ml.schema_registry",
+    "ml.dataset_row",
+    "ml.feature_extractor",
+    "ml.dataset_manager",
+    "ml.dataset_export",
+    "ml.telemetry",
+    
     # UI & Operators
     "ui.properties",
     "ui.lists",
@@ -50,18 +62,6 @@ modulesNames = [
     "operators.export_report",
     "operators.export_ml_features",
     "operators.clear_cache",
-    
-    # ML
-    "ml.schema_registry",
-    "ml.feature_schema",
-    "ml.dataset_row",
-    "ml.feature_extractor",
-    "ml.dataset_manager",
-    "ml.dataset_export",
-    "ml.telemetry",
-    
-    # Core
-    "core.session_manager",
 ]
 
 modulesFullNames = {}

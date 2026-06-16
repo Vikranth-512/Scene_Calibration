@@ -1,4 +1,6 @@
 import bpy
+import json
+import logging
 from ..utils.scene_cache import load_analysis_from_cache, save_analysis_to_cache, generate_scene_fingerprint
 from ..utils.statistics import SceneAnalysisSnapshot
 from ..analyzers.hardware_analyzer import analyze_hardware
@@ -14,6 +16,31 @@ from ..estimation.memory_estimator import estimate_memory
 from ..estimation.render_time_estimator import RuleBasedEstimator
 from ..core.session_manager import AnalysisSession
 
+DEBUG_BENCHMARK_PIPELINE = True
+logger = logging.getLogger(__name__)
+if not logger.handlers:
+    # Ensure debug output if not configured
+    logging.basicConfig(level=logging.DEBUG)
+
+def _apply_benchmark_data(snapshot, benchmark_data_json: str):
+    if not benchmark_data_json:
+        return
+        
+    if DEBUG_BENCHMARK_PIPELINE:
+        logger.debug(f"BENCHMARK RAW DATA: {benchmark_data_json}")
+        
+    try:
+        b_data = json.loads(benchmark_data_json)
+        res_px = snapshot.render_settings.resolution_x * snapshot.render_settings.resolution_y * (snapshot.render_settings.resolution_percentage / 100.0)
+        snapshot.benchmark.sample_times = [float(item["time"]) for item in b_data]
+        snapshot.benchmark.sample_pixels = [int(float(item["area"]) * res_px) for item in b_data]
+        
+        if DEBUG_BENCHMARK_PIPELINE:
+            logger.debug(f"BENCHMARK SNAPSHOT UPDATED: {snapshot.benchmark}")
+            
+    except Exception as e:
+        logger.error(f"Render Analyzer: Error parsing benchmark data: {e}")
+
 class RENDERANALYZER_OT_analyze_scene(bpy.types.Operator):
     """Analyze the current scene for performance bottlenecks"""
     bl_idname = "renderanalyzer.analyze_scene"
@@ -27,11 +54,13 @@ class RENDERANALYZER_OT_analyze_scene(bpy.types.Operator):
         cached = load_analysis_from_cache(scene)
         if cached:
             self.report({'INFO'}, "Render Analyzer: Loaded from cache.")
+            
+            benchmark_data = context.scene.render_analyzer_props.benchmark_data
+            # In-memory update of snapshot with new benchmark data (avoids cache timestamp mutation)
+            _apply_benchmark_data(cached, benchmark_data)
+            
             scene.render_analyzer_props.update_from_snapshot(cached)
             AnalysisSession.set_snapshot(cached)
-            
-            # Estimate Time
-            benchmark_data = context.scene.render_analyzer_props.benchmark_data
             
             estimator = RuleBasedEstimator()
             est_result = estimator.estimate(cached, benchmark_data_json=benchmark_data)
@@ -72,7 +101,8 @@ class RENDERANALYZER_OT_analyze_scene(bpy.types.Operator):
         
         # Estimate Time
         benchmark_data = context.scene.render_analyzer_props.benchmark_data
-        
+        _apply_benchmark_data(snapshot, benchmark_data)
+
         estimator = RuleBasedEstimator()
         est_result = estimator.estimate(snapshot, benchmark_data_json=benchmark_data)
         

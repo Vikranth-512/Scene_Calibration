@@ -4,6 +4,12 @@ import os
 import subprocess
 import tempfile
 import uuid
+import logging
+
+logger = logging.getLogger(__name__)
+if not logger.handlers:
+    logging.basicConfig(level=logging.DEBUG)
+DEBUG_BENCHMARK_PIPELINE = True
 
 class RENDERANALYZER_OT_benchmark_render(bpy.types.Operator):
     """Run a border-region benchmark to estimate render times"""
@@ -37,9 +43,13 @@ class RENDERANALYZER_OT_benchmark_render(bpy.types.Operator):
                         if not results:
                             self.report({'ERROR'}, "Benchmark produced no results.")
                         else:
+                            if DEBUG_BENCHMARK_PIPELINE:
+                                logger.debug(f"BENCHMARK GENERATED: {results}")
                             props = context.scene.render_analyzer_props
                             props.last_benchmark_time = sum(r['time'] for r in results) / len(results)
                             props.benchmark_data = json.dumps(results)
+                            if DEBUG_BENCHMARK_PIPELINE:
+                                logger.debug(f"BENCHMARK SAVED: {props.benchmark_data}")
                             
                             bpy.ops.renderanalyzer.analyze_scene()
                             self.report({'INFO'}, f"Benchmark Complete. Captured {len(results)} progressive samples.")

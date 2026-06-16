@@ -7,13 +7,25 @@ class HardwareProfile:
     ram_gb: float = 0.0
     gpu_names: List[str] = dataclasses.field(default_factory=list)
     gpu_vendor: str = "Unknown"
-    cuda_enabled: bool = False
-    optix_enabled: bool = False
-    hip_enabled: bool = False
-    metal_enabled: bool = False
     performance_tier: str = "Unknown"
     gpu_vram_gb: float = -1.0
+
+    # Hardware Capabilities (what Blender detects as available)
+    capability_cuda: bool = False
+    capability_optix: bool = False
+    capability_hip: bool = False
+    capability_metal: bool = False
+
+    # Active Cycles Backend (cprefs.compute_device_type)
     active_compute_backend: str = "CPU"
+
+    # Actual Render Device (scene.cycles.device)
+    render_device: str = "CPU"
+
+    # GPU Identity
+    gpu_family: str = "Unknown"
+    gpu_model_number: float = -1.0
+    gpu_generation: float = -1.0
 
 @dataclasses.dataclass
 class TextureStats:
@@ -82,6 +94,14 @@ class LightingStats:
     emissive_objects: int = 0
     shadow_casting_lights: int = 0
     lighting_cost_score: int = 0
+    total_energy: float = 0.0
+    mean_energy: float = 0.0
+    max_energy: float = 0.0
+
+@dataclasses.dataclass
+class BenchmarkStats:
+    sample_times: List[float] = dataclasses.field(default_factory=list)
+    sample_pixels: List[int] = dataclasses.field(default_factory=list)
 
 @dataclasses.dataclass
 class SceneStats:
@@ -178,6 +198,7 @@ class SceneAnalysisSnapshot:
     materials: List[MaterialStats] = dataclasses.field(default_factory=list)
     lighting: LightingStats = dataclasses.field(default_factory=LightingStats)
     volumes: VolumeStats = dataclasses.field(default_factory=VolumeStats)
+    benchmark: BenchmarkStats = dataclasses.field(default_factory=BenchmarkStats)
 
     def to_tensor(self):
         """
