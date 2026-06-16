@@ -2,7 +2,7 @@
 
 A production-quality Blender add-on for comprehensive render performance analysis and ML training-data collection. The tool provides deep insights into scene complexity, identifies rendering bottlenecks, estimates VRAM usage, predicts render times via hardware-calibrated benchmarks, and automatically scrapes structured feature vectors paired with ground-truth render timings for machine-learning research.
 
-<img width="1352" height="952" alt="image" src="https://github.com/user-attachments/assets/d316c921-b262-49df-8d1b-739bddeff387" />
+<img width="1272" height="907" alt="image" src="https://github.com/user-attachments/assets/da9632ff-ea4d-4e36-9bb8-f98d0d5ce3f3" />
 
 ## Project Structure
 
