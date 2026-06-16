@@ -39,7 +39,9 @@ blender_scene_analyzer/
     │   ├── benchmark_render.py
     │   └── export_report.py
     ├── reporting/                # I/O handling
-    │   └── export_json.py        # JSON report generation
+    │   ├── telemetry_handler.py  # Render handlers for telemetry
+    │   ├── json_export.py        # JSON report generation
+    │   └── csv_export.py         # CSV report generation
     ├── ui/                       # Blender interface code
     │   ├── lists.py              # UIList templates for bottlenecks/textures
     │   ├── panels.py             # Sidebar panel definitions
@@ -68,21 +70,28 @@ blender_scene_analyzer/
 - **Integrity Hashing** — SHA-256 hashes over strictly-ordered feature vectors detect duplicates, corruption, and schema drift.
 - **Validation Pipeline** — Schema-aware validation enforces key completeness, numeric finiteness, and semantic consistency (e.g., mutual exclusivity of compute backends) before any row is persisted.
 
-## Feature Schema (v1)
+## Feature Schema (v2)
 
-The ML pipeline extracts a fixed-width, 55-dimensional feature vector per render. All values are `float` with a default of `0.0`.
+The ML pipeline extracts a fixed-width, 93-dimensional feature vector per render. All values are `float` with a default of `0.0`.
 
 | Group | Features |
 |---|---|
-| **Geometry** (11) | `total_evaluated_faces`, `total_vertices`, `mesh_count`, `largest_mesh_faces`, `mean_mesh_faces`, `median_mesh_faces`, `modifier_count`, `subdivision_count`, `geometry_nodes_count`, `instance_count`, `instance_face_equivalent` |
+| **Geometry** (14) | `total_evaluated_faces`, `total_base_faces`, `total_vertices`, `mesh_count`, `largest_mesh_faces`, `mean_mesh_faces`, `median_mesh_faces`, `modifier_count`, `subdivision_count`, `geometry_nodes_count`, `instance_count`, `instance_face_equivalent`, `mean_amplification_ratio`, `max_amplification_ratio` |
+| **Instancing** (1) | `instance_to_mesh_ratio` |
 | **Materials** (7) | `material_count`, `glass_material_count`, `volume_material_count`, `displacement_material_count`, `total_shader_nodes`, `average_shader_nodes`, `max_shader_nodes` |
 | **Textures** (5) | `texture_count`, `texture_memory_mb`, `vram_estimate_mb`, `largest_texture_pixels`, `mean_texture_pixels` |
-| **Lighting** (7) | `light_count`, `sun_count`, `point_count`, `spot_count`, `area_count`, `emissive_material_count`, `hdri_count` |
+| **Lighting** (10) | `light_count`, `sun_count`, `point_count`, `spot_count`, `area_count`, `emissive_material_count`, `hdri_count`, `total_light_energy`, `mean_light_energy`, `max_light_energy` |
 | **Volumetrics** (4) | `volume_count`, `volume_world_space_m3`, `mean_volume_density`, `max_volume_density` |
-| **Render Settings** (7) | `samples`, `max_bounces`, `resolution_x`, `resolution_y`, `resolution_pixels`, `engine_cycles`, `engine_eevee` |
+| **Render Settings** (9) | `samples`, `max_bounces`, `resolution_x`, `resolution_y`, `resolution_pixels`, `aspect_ratio`, `sample_pixel_work`, `engine_cycles`, `engine_eevee` |
 | **Hardware Tiers** (6) | `tier_entry`, `tier_moderate`, `tier_high`, `tier_extreme`, `tier_unknown`, `tier_cpu_only` |
 | **Hardware Details** (2) | `system_ram_gb`, `gpu_vram_gb` |
-| **Compute Backend** (9) | `optix_enabled`, `cuda_enabled`, `metal_enabled`, `hip_enabled`, `backend_cpu`, `backend_cuda`, `backend_optix`, `backend_hip`, `backend_metal` |
+| **Hardware Caps** (4) | `capability_cuda`, `capability_optix`, `capability_hip`, `capability_metal` |
+| **Compute Backend** (5) | `backend_cpu`, `backend_cuda`, `backend_optix`, `backend_hip`, `backend_metal` |
+| **Render Device** (2) | `render_device_gpu`, `render_device_cpu` |
+| **GPU Vendor** (5) | `gpu_vendor_nvidia`, `gpu_vendor_amd`, `gpu_vendor_intel`, `gpu_vendor_apple`, `gpu_vendor_unknown` |
+| **GPU Family** (8) | `gpu_family_gtx`, `gpu_family_rtx`, `gpu_family_quadro`, `gpu_family_tesla`, `gpu_family_rx`, `gpu_family_arc`, `gpu_family_integrated`, `gpu_family_unknown` |
+| **GPU Perf Index** (2) | `gpu_model_number`, `gpu_generation` |
+| **Benchmark** (4) | `benchmark_time`, `benchmark_pixels`, `benchmark_time_per_pixel`, `benchmark_fixed_overhead` |
 | **Complexity Scores** (5) | `complexity_score`, `geometry_score`, `material_score`, `lighting_score`, `volume_score` |
 
 **Target variable:** `actual_render_time_seconds` (captured automatically on render completion).
