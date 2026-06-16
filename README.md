@@ -120,6 +120,13 @@ Open the 3D Viewport, press `N` to reveal the sidebar, and navigate to the **Ren
 4. **Top Bottlenecks** — Expand the bottleneck panel to identify the most expensive objects and textures.
 5. **Enable ML Telemetry** — Toggle in the panel to begin automatic dataset collection. Every subsequent render appends a validated row to the local JSONL dataset.
 
+## License
+
+This project is licensed under the GNU General Public License v3.0 (GPL-3.0).
+
+See the LICENSE file for details.
+
+
 ## Compatibility
 
 - Tested against Blender 4.2 LTS API standards.
